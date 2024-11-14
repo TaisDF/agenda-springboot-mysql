@@ -1,0 +1,26 @@
+# Arquivos do IntelliJ
+.idea/
+*.iml
+
+# Arquivos do Maven
+target/
+*.log
+.mvn/
+
+# Arquivos do Gradle
+build/
+gradle-wrapper.jar
+gradle-wrapper.properties
+.gradle/
+
+# Diretórios do sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de banco de dados locais (se houver)
+*.h2.db
+*.db
+*.sql
+
+# Arquivos de configuração do ambiente
+.env
