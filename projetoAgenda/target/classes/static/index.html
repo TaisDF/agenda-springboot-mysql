@@ -1,0 +1,257 @@
+<!DOCTYPE html> 
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda de Eventos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-top: 20px;
+            color: #333;
+        }
+
+        h2 {
+            margin-top: 40px;
+            color: #555;
+        }
+
+        /* Estilo da tabela */
+        table {
+            width: 50%; /* A tabela agora ocupa 50% da largura da tela */
+            margin-top: 20px;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* Ajustando as larguras das colunas */
+        th:first-child, td:first-child {
+            width: 0.1%; /* Largura da primeira coluna (Título) */
+        }
+
+        th:nth-child(2), td:nth-child(2) {
+            width: 0.2%; /* Largura da segunda coluna (Data e Hora) */
+        }
+
+        th:last-child, td:last-child {
+            width: 0.1%; /* Largura da terceira coluna (Ações) */
+        }
+
+        /* Estilo dos botões de ação */
+        button {
+            padding: 6px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        button.editar {
+            background-color: #3498db;
+            color: white;
+            border: none;
+        }
+
+        button.editar:hover {
+            background-color: #2980b9;
+        }
+
+        button.deletar {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+        }
+
+        button.deletar:hover {
+            background-color: #c0392b;
+        }
+
+        .form-container {
+            width: 50%; /* Largura do formulário agora também será 50% */
+            max-width: 600px;
+            background-color: #fff;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        .form-container input[type="text"],
+        .form-container input[type="datetime-local"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .form-container button {
+            width: 100%;
+            background-color: #4CAF50;
+            padding: 12px;
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .form-container button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Agenda de Eventos</h1>
+
+    <div class="form-container">
+        <h3>Criar/Editar Evento</h3>
+        <input type="text" id="titulo" placeholder="Título do Evento">
+        <input type="datetime-local" id="dataHora">
+        <button id="botaoSubmit" onclick="adicionarEvento()">Adicionar Evento</button>
+    </div>
+
+    <h2>Eventos Cadastrados</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Data e Hora</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="tabelaEventos">
+            <!-- Os eventos serão carregados aqui -->
+        </tbody>
+    </table>
+
+    <script>
+        let eventoEditando = null;
+
+        // Função para listar eventos
+        function listarEventos() {
+            fetch('http://localhost:8080/eventos')
+                .then(response => response.json())
+                .then(data => {
+                    const tabela = document.getElementById('tabelaEventos');
+                    tabela.innerHTML = ''; // Limpar a tabela
+
+                    // Preencher a tabela com os eventos
+                    data.forEach(evento => {
+                        const row = tabela.insertRow();
+                        row.insertCell(0).textContent = evento.titulo;
+                        row.insertCell(1).textContent = new Date(evento.dataHora).toLocaleString("pt-BR");
+
+                        const actionsCell = row.insertCell(2);
+                        const editButton = document.createElement('button');
+                        editButton.textContent = 'Editar';
+                        editButton.classList.add('editar');
+                        editButton.onclick = () => editarEvento(evento);
+                        actionsCell.appendChild(editButton);
+
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Deletar';
+                        deleteButton.classList.add('deletar');
+                        deleteButton.onclick = () => deletarEvento(evento.id);
+                        actionsCell.appendChild(deleteButton);
+                    });
+                })
+                .catch(error => console.error('Erro ao listar eventos:', error));
+        }
+
+        // Função para adicionar ou atualizar evento
+        function adicionarEvento() {
+            const titulo = document.getElementById('titulo').value;
+            const dataHora = document.getElementById('dataHora').value;
+
+            if (eventoEditando) {
+                // Atualizar evento
+                fetch(`http://localhost:8080/eventos/${eventoEditando.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ titulo, dataHora })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        listarEventos(); // Atualizar a lista de eventos
+                        resetarFormulario();
+                    } else {
+                        console.error('Erro ao atualizar evento');
+                    }
+                })
+                .catch(error => console.error('Erro ao atualizar evento:', error));
+            } else {
+                // Adicionar novo evento
+                fetch('http://localhost:8080/eventos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ titulo, dataHora })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        listarEventos(); // Atualizar a lista de eventos
+                        resetarFormulario();
+                    } else {
+                        console.error('Erro ao adicionar evento');
+                    }
+                })
+                .catch(error => console.error('Erro ao adicionar evento:', error));
+            }
+        }
+
+        // Função para editar evento
+        function editarEvento(evento) {
+            eventoEditando = evento;
+            document.getElementById('titulo').value = evento.titulo;
+            document.getElementById('dataHora').value = evento.dataHora;
+            document.getElementById('botaoSubmit').textContent = 'Atualizar Evento'; // Alterar o texto do botão
+        }
+
+        // Função para deletar evento
+        function deletarEvento(id) {
+            fetch(`http://localhost:8080/eventos/${id}`, {
+                method: 'DELETE'
+            })
+            .then(() => listarEventos())
+            .catch(error => console.error('Erro ao deletar evento:', error));
+        }
+
+        // Função para resetar o formulário
+        function resetarFormulario() {
+            eventoEditando = null;
+            document.getElementById('titulo').value = '';
+            document.getElementById('dataHora').value = '';
+            document.getElementById('botaoSubmit').textContent = 'Adicionar Evento'; // Resetar o botão
+        }
+
+        // Carregar a lista de eventos ao carregar a página
+        window.onload = listarEventos;
+    </script>
+</body>
+</html>
